@@ -1,5 +1,6 @@
 const Restaurant = require('../modules/restauant_module');
 const asyncHandler = require('express-async-handler');
+const api_features = require('../utils/api_features');
 // Create a new restaurant
 // POST /api/restaurants
 exports.create_restaurant = asyncHandler(async (req, res) => {
@@ -17,8 +18,19 @@ exports.create_restaurant = asyncHandler(async (req, res) => {
 // Get all restaurants
 // GET /api/restaurants
 exports.get_all_restaurants = asyncHandler(async (req, res) => {
-    const restaurants = await Restaurant.find().populate('owner', 'name email');
-    res.status(200).json(restaurants);
+    const count_docs = await Restaurant.countDocuments();
+    const features = new api_features(Restaurant.find().populate('owner', 'name email'), req.query)
+        .filter()
+        .search('restaurants')
+        .sort()
+        .limitFields()
+        .paginate(count_docs);
+    const restaurants = await features.mongooseQuery;
+    res.status(200).json({
+        results: restaurants.length,
+        pagination: features.pagination_result,
+        data: restaurants
+    });
 });
 // Get restaurant by ID
 // GET /api/restaurants/:id
@@ -30,7 +42,6 @@ exports.get_restaurant_by_id = asyncHandler(async (req, res, next) => {
         res.status(404);
         return next(new Error('Restaurant not found'));
     }
-    next();
 });
 // Update restaurant by ID
 // PUT /api/restaurants/:id
@@ -51,7 +62,6 @@ exports.update_restaurant_by_id = asyncHandler(async (req, res, next) => {
         res.status(404);
         return next(new Error('Restaurant not found'));
     }
-    next();
 });
 // Delete restaurant by ID
 // DELETE /api/restaurants/:id
@@ -68,5 +78,4 @@ exports.delete_restaurant_by_id = asyncHandler(async (req, res, next) => {
         res.status(404);
         return next(new Error('Restaurant not found'));
     }
-    next();
 });
