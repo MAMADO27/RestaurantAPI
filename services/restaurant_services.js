@@ -1,6 +1,7 @@
 const Restaurant = require('../modules/restauant_module');
 const asyncHandler = require('express-async-handler');
 const api_features = require('../utils/api_features');
+const api_error = require('../utils/api_error');
 // Create a new restaurant
 // POST /api/restaurants
 exports.create_restaurant = asyncHandler(async (req, res) => {
@@ -18,7 +19,11 @@ exports.create_restaurant = asyncHandler(async (req, res) => {
 // Get all restaurants
 // GET /api/restaurants
 exports.get_all_restaurants = asyncHandler(async (req, res) => {
-    const count_docs = await Restaurant.countDocuments();
+   const countFeatures = new api_features(Restaurant.find(), req.query)
+    .filter()
+    .search('restaurants');
+    const filteredDocs = await countFeatures.mongooseQuery;
+    const count_docs = filteredDocs.length;
     const features = new api_features(Restaurant.find().populate('owner', 'name email'), req.query)
         .filter()
         .search('restaurants')
@@ -39,8 +44,7 @@ exports.get_restaurant_by_id = asyncHandler(async (req, res, next) => {
     if(restaurant) {
         res.status(200).json(restaurant);
     } else {
-        res.status(404);
-        return next(new Error('Restaurant not found'));
+        return next(new api_error('Restaurant not found',404));
     }
 });
 // Update restaurant by ID
@@ -49,8 +53,7 @@ exports.update_restaurant_by_id = asyncHandler(async (req, res, next) => {
     const restaurant = await Restaurant.findById(req.params.id);
     if(restaurant) {
         if(restaurant.owner.toString() !== req.user.id) {
-            res.status(403);
-            return next(new Error('Not authorized to update this restaurant'));
+            return next(new api_error('Not authorized to update this restaurant',403));
         }
         restaurant.name = req.body.name || restaurant.name;
         restaurant.address = req.body.address || restaurant.address;
@@ -59,8 +62,7 @@ exports.update_restaurant_by_id = asyncHandler(async (req, res, next) => {
         const updated_restaurant = await restaurant.save();
         res.status(200).json(updated_restaurant);
     } else {
-        res.status(404);
-        return next(new Error('Restaurant not found'));
+        return next(new api_error('Restaurant not found', 404));
     }
 });
 // Delete restaurant by ID
@@ -69,13 +71,11 @@ exports.delete_restaurant_by_id = asyncHandler(async (req, res, next) => {
     const restaurant = await Restaurant.findById(req.params.id);
     if(restaurant) {
         if(restaurant.owner.toString() !== req.user.id) {
-            res.status(403);
-            return next(new Error('Not authorized to delete this restaurant'));
+            return next(new api_error('Not authorized to delete this restaurant',403));
         }
             await Restaurant.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: 'Restaurant removed' });
     } else {
-        res.status(404);
-        return next(new Error('Restaurant not found'));
+        return next(new api_error('Restaurant not found', 404));
     }
 });

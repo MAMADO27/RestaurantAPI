@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../modules/user_module');
 const create_token = require('../utils/create_token');
+const api_error = require('../utils/api_error');
 // signup 
 // POST /api/auth/signup
 exports.signup = asyncHandler(async (req, res) => {
@@ -11,8 +12,7 @@ exports.signup = asyncHandler(async (req, res) => {
     // Check if user already exists
     const user_exists = await User.findOne({ email });
     if(user_exists) {
-        res.status(400);
-        throw new Error('User already exists');
+       return new api_error('User already exists',400);
     }
     // Create user (password will be hashed by pre-save hook)
     const user = await User.create({
@@ -27,8 +27,8 @@ exports.signup = asyncHandler(async (req, res) => {
             _id: user._id,name: user.name, email: user.email,token
         });
     } else {
-        res.status(400);
-        throw new Error('Invalid user data');
+        
+        return new api_error('Invalid user data',400);
     }
 });
 // login
