@@ -24,7 +24,8 @@ const user_schema = new mongoose.Schema({
    },
   phone: String,
   address: String,
-   
+
+ 
 },
 { timestamps: true }
 );
