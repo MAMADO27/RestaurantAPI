@@ -38,6 +38,15 @@ const order_schema = new mongoose.Schema({
     deliveryAddress: {  
         type: String,
         required: true
+    },
+    notes:String,
+    deliver_fee:{
+        type: Number,
+        required: true
+    },
+    tax:{
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

@@ -8,6 +8,7 @@ const menu_item_routes = require('./routes/menu_item_route');
 const global_error = require('./middleware/error_middelware');
 const api_error = require('./utils/api_error');
 const cart_routes = require('./routes/cart_route');
+const order_routes = require('./routes/order_route');
 //DATA BASE CONNECTION
 data_base();
 
@@ -18,6 +19,7 @@ app.use('/api/users', user_routes);
 app.use('/api/restaurants', restaurant_routes);
 app.use('/api/menu_items', menu_item_routes);
 app.use('/api/cart', cart_routes);
+app.use('/api/orders', order_routes);
 
 
 app.all('/*any', (req, res, next) => {

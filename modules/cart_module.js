@@ -23,6 +23,6 @@ const cart_schema = new mongoose.Schema({
         }
     }]
 },
-{ timestamps: true }
+{ timestamps: true, strictPopulate: false }
 );
 module.exports = mongoose.model('Cart', cart_schema);
