@@ -19,11 +19,10 @@ exports.create_order= asyncHandler(async (req, res, next) => {
     if (!cart || cart.cart.length === 0) {
         return next(new api_error('Cart is empty', 400));
     }
-    const first_item = cart.cart[0].menuItem.restaurant;
-    const restaurant_id=first_item;
-    
-    const same_restaurant = cart.cart.every(
-    item => item.menuItem.restaurant.toString() === first_item.toString());
+   const restaurant_id =cart.cart[0].menuItem.restaurant.toString();
+
+    const same_restaurant = cart.cart.every(item => item.menuItem.restaurant.toString() ===restaurant_id);
+
     if(!same_restaurant){
         return next(new api_error('All items in the cart must be from the same restaurant',400));
     }
@@ -52,6 +51,16 @@ exports.create_order= asyncHandler(async (req, res, next) => {
     await order.save();
     cart.cart = [];
     await cart.save();
+    // --------------Emit socket.io event to notify restaurant of new order------
+    const socket_io = req.app.get('socket_io');
+    socket_io.to(`restaurant_${restaurant_id}`).emit('new_order', {
+    type: 'new_order',
+    message: 'New order placed',
+    orderId: order._id,
+    customerName: req.user.name,
+    totalPrice: order.totalPrice,
+    timestamp: new Date()
+  });
     res.status(201).json({
         success: true,
         message: 'Order created successfully',
@@ -122,6 +131,9 @@ exports.get_order_by_id= asyncHandler(async (req, res, next) => {
 exports.update_order_status= asyncHandler(async (req, res, next) => {
     const order_id=req.params.id;
     const order = await Order.findById(order_id);
+    if(!order){
+        return next(new api_error('Order not found',404));
+    }
     const { status } = req.body;
     const validTransitions = {
     'pending': ['preparing', 'cancelled'],
@@ -136,11 +148,18 @@ exports.update_order_status= asyncHandler(async (req, res, next) => {
     ));
    }
     
-    if(!order){
-        return next(new api_error('Order not found',404));
-    }
     order.status = status;
     await order.save();
+ // -----------Emit socket.io event to notify restaurant of new order------
+    const socket_io = req.app.get('socket_io');
+    socket_io.to(`customer_${order.customer}`).emit('order_status_update', {
+    type: 'order_status_update',
+    message: `Your order is now ${status}`,
+    orderId: order._id,
+    status,
+    timestamp: new Date()
+  });
+
     res.status(200).json({
         success: true,
         message: 'Order status updated',

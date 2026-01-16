@@ -5,6 +5,9 @@
     "dependencies": {
   
       
+    "@sendgrid/mail": "^8.1.6",
+  
+      
     "bcrypt": "^6.0.0",
   
       
@@ -29,7 +32,10 @@
     "mongoose": "^9.0.0",
   
       
-    "slugify": "^1.6.6"
+    "slugify": "^1.6.6",
+  
+      
+    "socket.io": "^4.8.3"
   
     }
 }

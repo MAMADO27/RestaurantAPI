@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.io Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .notification { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-left: 4px solid #4CAF50;
+            background: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <h1> Real-time Notifications</h1>
+    
+    <div>
+        <h3>Join as:</h3>
+        <input id="userId" placeholder="User ID" />
+        <button onclick="joinAsUser()">Join as Customer</button>
+        <br><br>
+        <input id="restaurantId" placeholder="Restaurant ID" />
+        <button onclick="joinAsRestaurant()">Join as Restaurant</button>
+    </div>
+    
+    <hr>
+    <h3>Notifications:</h3>
+    <div id="notifications"></div>
+
+    <script>
+        const socket = io('http://localhost:5000');
+        
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('notifications').innerHTML += 
+                '<div class="notification">Connected to server</div>';
+        });
+        
+        function joinAsUser() {
+            const userId = document.getElementById('userId').value;
+            if (userId) {
+                socket.emit('join', userId);
+                document.getElementById('notifications').innerHTML += 
+                    `<div class="notification"> Joined as User: ${userId}</div>`;
+            }
+        }
+        
+        function joinAsRestaurant() {
+            const restaurantId = document.getElementById('restaurantId').value;
+            if (restaurantId) {
+                socket.emit('join_restaurant', restaurantId);
+                document.getElementById('notifications').innerHTML += 
+                    `<div class="notification"> Joined Restaurant: ${restaurantId}</div>`;
+            }
+        }
+        
+        // Listen for new order
+        socket.on('new_order', (data) => {
+            console.log('New Order:', data);
+            document.getElementById('notifications').innerHTML += 
+                `<div class="notification">
+                    <strong>New Order!</strong><br>
+                    Customer: ${data.customerName}<br>
+                    Total: ${data.totalPrice} EGP<br>
+                    Time: ${new Date(data.timestamp).toLocaleTimeString()}
+                </div>`;
+        });
+        
+        // Listen for order status update
+        socket.on('order_status_update', (data) => {
+            console.log(' Status Update:', data);
+            document.getElementById('notifications').innerHTML += 
+                `<div class="notification">
+                    <strong> Order Status Updated!</strong><br>
+                    ${data.message}<br>
+                    Time: ${new Date(data.timestamp).toLocaleTimeString()}
+                </div>`;
+        });
+        
+        // Listen for new review
+        socket.on('new_review', (data) => {
+            console.log(' New Review:', data);
+            document.getElementById('notifications').innerHTML += 
+                `<div class="notification">
+                    <strong> New Review!</strong><br>
+                    Customer: ${data.customerName}<br>
+                    Rating: ${data.rating} stars<br>
+                    Time: ${new Date(data.timestamp).toLocaleTimeString()}
+                </div>`;
+        });
+        
+        socket.on('disconnect', () => {
+            console.log(' Disconnected');
+            document.getElementById('notifications').innerHTML += 
+                '<div class="notification"> Disconnected from server</div>';
+        });
+    </script>
+</body>
+</html>
