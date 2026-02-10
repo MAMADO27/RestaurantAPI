@@ -79,6 +79,14 @@ data_base();
 //ALL ROUTES
 all_routes(app);
 
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: Date.now()
+    });
+});
+
 //GLOBAL ERROR HANDLER
 app.all('/*any', (req, res, next) => {
   next(new api_error(`Can't find ${req.originalUrl} on this server!`, 404));
