@@ -1,10 +1,13 @@
 const mongoose = require('mongoose');
+const{sanitize_text}= require('../utils/sanitize');
 const menu_item_schema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+   required: true,
+    trim: true,
+    set: sanitize_text
     },
-    description: String,
+    description: {type: String, set: sanitize_text},
     price: {
       type: Number,
       required: true,
@@ -12,7 +15,8 @@ const menu_item_schema = new mongoose.Schema({
     },
     category: {
       type: String,
-        required: true
+        required: true,
+        set: sanitize_text
     },
     restaurant: {
       type: mongoose.Schema.Types.ObjectId,
@@ -23,8 +27,13 @@ const menu_item_schema = new mongoose.Schema({
       type: Boolean,
         default: true
     },
-    image_url: String
+    image:{
+      type: String,
+      set: sanitize_text
+    },
+    cloudinary_id: String
 },
 { timestamps: true }
 );
+
 module.exports = mongoose.model('MenuItem', menu_item_schema);

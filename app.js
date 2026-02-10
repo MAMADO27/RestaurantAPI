@@ -1,62 +1,109 @@
 require('dotenv').config();
 const express = require('express');
 const data_base = require('./config/data_base');
-const auth_routes = require('./routes/auth_route');
-const user_routes = require('./routes/user_route');
-const restaurant_routes = require('./routes/restaurant_route');
-const menu_item_routes = require('./routes/menu_item_route');
 const global_error = require('./middleware/error_middelware');
 const api_error = require('./utils/api_error');
-const cart_routes = require('./routes/cart_route');
-const order_routes = require('./routes/order_route');
-const payment_routes = require('./routes/payment_route');
-const review_routes = require('./routes/review_route');
+const all_routes = require('./routes/index');
+const rate_limit = require('express-rate-limit');
+const hpp = require('hpp');
+const helmet = require('helmet');
+const cors = require('cors');
+const compression = require('compression');
 const app = express();
-//SOCKET IO SETUP
-const server = require('http').createServer(app);
-const socket_io = require('socket.io')(server, {
-    cors: {
-        origin: '*',
-        methods: ['GET', 'POST']
+
+app.set('trust proxy', 1);
+app.use(express.json({limit: '50mb'}));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Custom sanitizer middleware (replaces mongo-sanitize)
+const customSanitizer = (req, res, next) => {
+    const sanitize = (obj) => {
+        for (const key in obj) {
+            if (typeof obj[key] === 'string') {
+                // Replace MongoDB operators
+                obj[key] = obj[key].replace(/[$.]/g, '_');
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                sanitize(obj[key]);
+            }
+        }
+    };
+    // Only sanitize body, not query
+    if (req.body) {
+        sanitize(req.body);
     }
+    next();
+};
+
+
+const limiter = rate_limit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.path === '/api/payment/paypal/webhook'
 });
+
+app.use(limiter);
+
+app.use(helmet({contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: []
+      }
+    }}));
+
+app.use(cors());
+app.options('/*any', cors());
+app.use(compression());
+
+
+//Prevent HTTP Parameter Pollution attacks
+app.use(hpp({
+    whitelist: ['price','rating','category','cuisine','tags','page','limit','sort','fields','search']
+}));
+//Data sanitization against NoSQL query injection
+//Prevent MongoDB Operator Injection (custom sanitizer - only on req.body)
+app.use(customSanitizer);
+
+// Passport configuration (Facebook & Google)
+const passport = require('passport');
+require('./config/FB_paasport');
+require('./config/google_passport');
+app.use(passport.initialize());
 
 //DATA BASE CONNECTION
 data_base();
 
+//ALL ROUTES
+all_routes(app);
 
-app.use(express.json());
-app.use('/api/auth', auth_routes);
-app.use('/api/users', user_routes);
-app.use('/api/restaurants', restaurant_routes);
-app.use('/api/menu_items', menu_item_routes);
-app.use('/api/cart', cart_routes);
-app.use('/api/orders', order_routes);
-app.use('/api/payments', payment_routes);
-app.use('/api/reviews', review_routes);
-
-
+//GLOBAL ERROR HANDLER
 app.all('/*any', (req, res, next) => {
   next(new api_error(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 app.use(global_error);
 
+//SOCKET IO SETUP
+const server = require('http').createServer(app);
 
+const socket_io = require('socket.io')(server, {
+    cors: {origin: '*',methods: ['GET', 'POST']}
+});
 //SOCKET IO CONNECTION
 socket_io.on('connection', (socket) => {
-    console.log('Connected:', socket.id);
-    // Customer joins his private room
+     // Customer joins his private room
     socket.on('join', (userId) => {
         socket.join(`customer_${userId}`);
-        console.log(`Joined customer_${userId}`);
     });
-    // Restaurant joins its room
+// Restaurant joins its room
     socket.on('join_restaurant', (restaurantId) => {
         socket.join(`restaurant_${restaurantId}`);
-        console.log(`Joined restaurant_${restaurantId}`);
     });
+//disconniction
     socket.on('disconnect', () => {
-        console.log('Disconnected:', socket.id);
+        console.log('User disconnected');
     });
 });
 app.set('socket_io', socket_io);

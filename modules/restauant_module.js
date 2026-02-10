@@ -1,14 +1,21 @@
 const mongoose= require('mongoose');
+const{sanitize_text,sanitize_rich_text}= require('../utils/sanitize');
 const restaurant_schema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
+    set: sanitize_text
     },
     address: {
       type: String,
-      required: true
+      required: true,
+      set: sanitize_text
     },
-    phone: String,
+    description: {
+      type: String,
+      set: sanitize_rich_text,
+    },
+    phone: {type:String, set: sanitize_text},
     rating: {
       type: Number,
       min: [0, 'Rating must be at least 0'],
@@ -18,11 +25,12 @@ const restaurant_schema = new mongoose.Schema({
     owner:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        //required: true
     },
     cuisine: {
-       type:String,
-       required: true
+      type:String,
+      required: true,
+      set: sanitize_text
 
       }
 },

@@ -7,11 +7,24 @@ const api_error = require('../utils/api_error');
 exports.get_user_profile = asyncHandler(async (req, res,next) => {
     const user = await User.findById(req.user.id).select('-password');
     if(user) {
-        res.status(200).json(user);
+        res.status(200).json({success: true,user});
     } else {
        
         return next(new api_error('User not found',404));
     }
-    next();
-});
    
+});
+
+exports.update_user = asyncHandler(async (req, res, next) => {
+    const id = req.params.id;
+    const { name } = req.body;
+    const document = await User.findByIdAndUpdate(
+        req.params.id,
+        {name: req.body.name,phone: req.body.phone, email: req.body.email, role: req.body.role},
+        { new: true }
+    );
+    if (!document) {
+        return next(new api_error('document not found', 404));
+    }
+    res.status(200).json({ success: true,data: document });
+});

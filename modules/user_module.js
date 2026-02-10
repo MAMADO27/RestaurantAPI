@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+const {sanitize_text}= require('../utils/sanitize');
 const user_schema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
+    set: sanitize_text
     },
   email: {
     type: String,
@@ -11,10 +14,28 @@ const user_schema = new mongoose.Schema({
     lowercase: true,
     unique: true,
     },
+  facebookId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  provider: {
+   type: String,
+    enum: ['local', 'google', 'facebook'],
+    default: 'local',
+  },
   password: {
     type: String,
     required: true,
-   minlength: [6, 'Password must be at least 6 characters long']
+   minlength: [6, 'Password must be at least 6 characters long'],
+   required: function () {
+    return this.provider === 'local';
+  },
    },
   role:{
     type: String,
@@ -23,7 +44,14 @@ const user_schema = new mongoose.Schema({
 
    },
   phone: String,
-  address: String,
+  address: {type:String, set: sanitize_text,trim: true},
+
+  password_reset_code: String,
+  password_reset_expires: Date,
+  password_reset_verified: {
+    type: Boolean,
+    default: false
+  }
 
  
 },

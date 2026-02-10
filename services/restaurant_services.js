@@ -14,7 +14,7 @@ exports.create_restaurant = asyncHandler(async (req, res) => {
         owner,
         phone
     });
-    res.status(201).json(restaurant);
+    res.status(201).json({success: true, data: restaurant});
 });
 // Get all restaurants
 // GET /api/restaurants
@@ -32,9 +32,10 @@ exports.get_all_restaurants = asyncHandler(async (req, res) => {
         .paginate(count_docs);
     const restaurants = await features.mongooseQuery;
     res.status(200).json({
+        success: true,
         results: restaurants.length,
         pagination: features.pagination_result,
-        data: restaurants
+        restaurants: restaurants
     });
 });
 // Get restaurant by ID
@@ -42,7 +43,7 @@ exports.get_all_restaurants = asyncHandler(async (req, res) => {
 exports.get_restaurant_by_id = asyncHandler(async (req, res, next) => {
     const restaurant = await Restaurant.findById(req.params.id).populate('owner', 'name email');
     if(restaurant) {
-        res.status(200).json(restaurant);
+        res.status(200).json({success: true,restaurant});
     } else {
         return next(new api_error('Restaurant not found',404));
     }
@@ -60,7 +61,7 @@ exports.update_restaurant_by_id = asyncHandler(async (req, res, next) => {
         restaurant.cuisine = req.body.cuisine || restaurant.cuisine;
         restaurant.phone = req.body.phone || restaurant.phone;
         const updated_restaurant = await restaurant.save();
-        res.status(200).json(updated_restaurant);
+        res.status(200).json({success: true, data: updated_restaurant});
     } else {
         return next(new api_error('Restaurant not found', 404));
     }
@@ -74,7 +75,7 @@ exports.delete_restaurant_by_id = asyncHandler(async (req, res, next) => {
             return next(new api_error('Not authorized to delete this restaurant',403));
         }
             await Restaurant.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: 'Restaurant removed' });
+        res.status(200).json({ success: true,message: 'Restaurant removed' });
     } else {
         return next(new api_error('Restaurant not found', 404));
     }

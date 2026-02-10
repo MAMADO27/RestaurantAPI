@@ -4,12 +4,15 @@ const api_error = require('../utils/api_error');
 const asyncHandler = require('express-async-handler');
 const Cart = require('../modules/cart_module');
 const MenuItem = require('../modules/menu_items_module');
+const User = require('../modules/user_module');
+const Copon = require('../modules/copon_module');
 const api_features = require('../utils/api_features');
+const send_email = require('../utils/send_email');
 
 exports.create_order= asyncHandler(async (req, res, next) => {
-    const { deliveryAddress, notes } = req.body;
+    const { deliveryAddress, notes,payment_method } = req.body;
     const order = new Order({
-        deliveryAddress,notes
+        deliveryAddress,notes,payment_method
     });
     const user_id=req.user.id;
     if (!user_id) {
@@ -48,6 +51,26 @@ exports.create_order= asyncHandler(async (req, res, next) => {
     order.totalPrice = subtotal + tax + deliver_fee;
     order.tax = tax;
     order.deliver_fee = deliver_fee;
+    // If copon code is provided, validate and apply discount
+    const { copon_code } = req.body;
+    if (copon_code) {
+        const copon = await Copon.findOne({ code: copon_code.toUpperCase(), active: true });
+        if (!copon) {
+            return next(new api_error('Invalid or inactive copon code', 404));
+        }
+        if (new Date() > copon.expiration_date) {
+            return next(new api_error('Copon code has expired', 400));
+        }
+        if (copon.usage_limit && copon.times_used >= copon.usage_limit) {
+            return next(new api_error('Copon usage limit reached', 400));
+        }
+        copon.times_used += 1;
+        await copon.save();
+        const discount_amount = (copon.discount_value / 100) * subtotal;
+        order.totalPrice -= discount_amount;
+        order.discount = discount_amount;
+        order.copon_code = copon_code.toUpperCase();
+    }
     await order.save();
     cart.cart = [];
     await cart.save();
@@ -61,6 +84,16 @@ exports.create_order= asyncHandler(async (req, res, next) => {
     totalPrice: order.totalPrice,
     timestamp: new Date()
   });
+  const message = `New order confirmed from ${req.user.name}. Order ID: ${order._id}. Total Price: $${order.totalPrice.toFixed(2)}. Please check your dashboard for more details.`;
+    try {
+        await send_email({
+            email: req.user.email,
+            subject: 'New Order Placed',
+            message,
+        });
+    } catch (error) {
+        console.error('Error sending order notification email:', error);
+    }
     res.status(201).json({
         success: true,
         message: 'Order created successfully',
@@ -84,26 +117,42 @@ exports.get_users_order= asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.get_restaurant_orders= asyncHandler(async (req, res, next) => {
-    const restaurant_id=req.params.restaurant_id;
-    if(!restaurant_id){
-        return next(new api_error('User not authenticated as restaurant',401));
-    }
-    if (req.user.role !== 'staff' && req.user.role !== 'admin') {
-        return next(new api_error('Access denied: Not a restaurant user', 403));
+exports.get_restaurant_orders = asyncHandler(async (req, res, next) => {
+    const restaurant_id = req.params.restaurant_id;
+
+    if (!restaurant_id) {
+       return next(new api_error('Restaurant id is required', 400));
     }
 
-    const count_docs = await Order.countDocuments({ restaurant: restaurant_id });
-    const features = new api_features(Order.find({ restaurant: restaurant_id }).populate('items.menuItem', 'name price')
-    .populate('customer', 'name email'), req.query)
-    .sort()
-    .limitFields()
-    .paginate(count_docs);
-    const orders = await features.mongooseQuery;
+    if (req.user.role !== 'staff' && req.user.role !== 'admin') {
+       return next(new api_error('Access denied', 403));
+    }
+
+    // Cursor pagination
+    const limit = +req.query.limit || 10;
+    const cursor = req.query.cursor;
+
+    const query = { restaurant: restaurant_id };
+
+    if (cursor) {
+      query.createdAt = { $lt: new Date(cursor) };
+     }
+
+    const orders = await Order.find(query)
+      .populate('items.menuItem', 'name price').populate('customer', 'name email').sort({ createdAt: -1 }).limit(limit + 1);
+
+    const hasMore = orders.length > limit;
+
+    if (hasMore) {
+      orders.pop();
+    }
+
+    const nextCursor =hasMore && orders.length > 0? orders[orders.length - 1].createdAt: null;
+
     res.status(200).json({
-        success: true,
-        orders,
-        pagination: features.pagination_result
+       success: true,
+      results: orders.length,
+      hasMore,nextCursor,orders
     });
 });
 
@@ -203,5 +252,3 @@ exports.get_order_stats= asyncHandler(async (req, res, next) => {
         stats
     });
 });
-
-   

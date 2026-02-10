@@ -11,9 +11,6 @@ class api_features {
     const queryObj = { ...this.queryString };
     const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludedFields.forEach((field) => delete queryObj[field]);
-
-    // Handle advanced filtering: ?price[gte]=100&rating[lt]=5
-    // Also handles direct filtering: ?cuisine=Italian&name=Pizza
     for (const key in queryObj) {
       if (key.includes('[')) {
         // Advanced operators (gte, gt, lte, lt, eq, ne)
@@ -111,14 +108,12 @@ class api_features {
       const fields = this.queryString.fields.split(',').join(' ');
       this.mongooseQuery = this.mongooseQuery.select(fields);
     } else {
-      // Default: exclude __v
       this.mongooseQuery = this.mongooseQuery.select('-__v');
     }
     return this;
   }
 
   // Paginate: Split results into pages
-  // Examples: ?page=2&limit=10
   paginate(count_docs) {
     const page = +this.queryString.page || 1;
     const limit = +this.queryString.limit || 10;
@@ -131,13 +126,9 @@ class api_features {
       total_pages: Math.ceil(count_docs / limit),
       total_docs: count_docs
     };
-
-    // Add next page if there are more results
     if (end_index < count_docs) {
       pagination.next_page = page + 1;
     }
-
-    // Add previous page if not on first page
     if (skip > 0) {
       pagination.previous_page = page - 1;
     }
@@ -146,6 +137,20 @@ class api_features {
     this.pagination_result = pagination;
     return this;
   }
+
+ cursor_paginate() {
+    const limit = +this.queryString.limit || 10;
+    const cursor = this.queryString.cursor;
+  if (cursor) {
+  this.mongoQuery.createdAt = { $lt: new Date(cursor) };
 }
 
+this.mongooseQuery = this.mongooseQuery
+  .find(this.mongoQuery)
+  .sort({ createdAt: -1 })
+  .limit(limit + 1);
+  this.cursor_limit = limit;
+    return this;
+  }
+}
 module.exports = api_features;

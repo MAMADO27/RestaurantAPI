@@ -7,30 +7,30 @@ const Order = require('../modules/order_modules');
 const { calc_average_rating } = require('./rating_avrg');
 
 exports.create_review = asyncHandler(async (req, res, next) => {
-    const { restaurant_id, rating, comment } = req.body;
+    const { restaurantId, rating, comment } = req.body;
     const user_id = req.user.id;
-    const restaurant = await Restaurant.findById(restaurant_id);
+    const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
         return next(new api_error('Restaurant not found', 404));
     }
-    const hands_on= await Order.findOne({ customer: user_id, restaurant: restaurant_id, status: 'delivered' });
+    const hands_on= await Order.findOne({ customer: user_id, restaurant: restaurantId, status: 'delivered' });
     if (!hands_on) {
         return next(new api_error('You can only review restaurants you have ordered from', 400));
     }
-    const existing_review = await Review.findOne({ user: user_id, restaurant: restaurant_id });
+    const existing_review = await Review.findOne({ user: user_id, restaurant: restaurantId });
     if (existing_review) {
         return next(new api_error('You have already reviewed this restaurant', 400));
     }
     const review = await Review.create({
         user: user_id,
-        restaurant: restaurant_id,
+        restaurant: restaurantId,
         rating,
         comment
     });
-    calc_average_rating(restaurant_id);
+    calc_average_rating(restaurantId);
     // -----Emit socket.io event to notify restaurant of new review------
     const socket_io = req.app.get('socket_io');
-       socket_io.to(`restaurant_${restaurant_id}`).emit('new_review', {
+       socket_io.to(`restaurant_${restaurantId}`).emit('new_review', {
         type: 'new_review',
         message: 'New review received',
         reviewId: review._id,
@@ -38,7 +38,7 @@ exports.create_review = asyncHandler(async (req, res, next) => {
         customerName: req.user.name,
         timestamp: new Date()
     });
-    res.status(201).json(review);
+    res.status(201).json({success: true,review});
 });
 
 exports.get_restaurant_reviews = asyncHandler(async (req, res, next) => {
@@ -47,6 +47,7 @@ exports.get_restaurant_reviews = asyncHandler(async (req, res, next) => {
     if (!restaurant) {
         return next(new api_error('Restaurant not found', 404));
     }
+    const count_docs = await Review.countDocuments({ restaurant: restaurant_id });
     const apiFeatures = new api_features(Review.find({ restaurant: restaurant_id }).populate('user', 'name email'), req.query)
         .sort()
         .limitFields()
@@ -54,6 +55,7 @@ exports.get_restaurant_reviews = asyncHandler(async (req, res, next) => {
     const reviews = await apiFeatures.mongooseQuery;
     calc_average_rating(restaurant_id);
     res.status(200).json({
+        success: true,
         results: reviews.length,
         data: reviews
     });
@@ -61,12 +63,14 @@ exports.get_restaurant_reviews = asyncHandler(async (req, res, next) => {
 
 exports.get_my_reviews = asyncHandler(async (req, res, next) => {
     const user_id = req.user.id;
+    const count_docs = await Review.countDocuments({ user: user_id });
     const apiFeatures = new api_features(Review.find({ user: user_id }).populate('restaurant', 'name cuisine'), req.query)
         .sort()
         .limitFields()
         .paginate(count_docs);
     const reviews = await apiFeatures.mongooseQuery;
     res.status(200).json({
+        success: true,
         results: reviews.length,
         data: reviews
     });
@@ -86,7 +90,7 @@ exports.update_review_by_id = asyncHandler(async (req, res, next) => {
     review.comment = req.body.comment || review.comment;
     const updated_review = await review.save();
     calc_average_rating(review.restaurant);
-    res.status(200).json(updated_review);
+    res.status(200).json({success: true,updated_review});
 });
 
 exports.delete_review_by_id = asyncHandler(async (req, res, next) => {
@@ -101,5 +105,5 @@ exports.delete_review_by_id = asyncHandler(async (req, res, next) => {
     }
     await Review.findByIdAndDelete(review_id);
     calc_average_rating(review.restaurant);
-    res.status(204).json();
+    res.status(204).json({success: true, message: 'Review deleted successfully' });
 });

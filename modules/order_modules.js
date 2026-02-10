@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const{sanitize_text}= require('../utils/sanitize');
 const order_schema = new mongoose.Schema({
     items: [{
         menuItem: {
@@ -25,6 +26,14 @@ const order_schema = new mongoose.Schema({
         enum: ['pending', 'paid', 'refunded'],
         default: 'pending'
     },
+    payment_method: {
+        type: String,
+        enum: ['card', 'cash_on_delivery', 'paypal'],
+        required: true
+    },
+    pay_at: Date,
+    paypal_order_id: String,
+    paypal_capture_id: String,
     status: {
         type: String,
         enum: ['pending', 'preparing', 'delivered', 'cancelled'],
@@ -42,12 +51,22 @@ const order_schema = new mongoose.Schema({
     },
     deliveryAddress: {  
         type: String,
-        required: true
+        required: true,
+        set: sanitize_text
     },
-    notes:String,
+    notes:{type: String, set: sanitize_text},
     deliver_fee:{
         type: Number,
         required: true
+    },
+    discount:{
+        type: Number,
+        default: 0
+    },
+    copon_code:{
+        type: String,
+        set: sanitize_text,
+        uppercase: true 
     },
     tax:{
         type: Number,

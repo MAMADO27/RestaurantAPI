@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const{sanitize_text}= require('../utils/sanitize');
 const review_schema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -18,7 +19,8 @@ const review_schema = new mongoose.Schema({
     },
     comment: {
         type: String,
-        required: true
+        required: true,
+        set: sanitize_text
     }
 }, { timestamps: true });
 module.exports = mongoose.model('Review', review_schema);
