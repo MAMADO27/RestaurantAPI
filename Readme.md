@@ -205,8 +205,8 @@ This project is licensed under the MIT License .
 ## Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/MAMADO27)
-- LinkedIn: [Your Profile](https://linkedin.com/in/mohammad-abd-elrahman)
+- GitHub: [MAMADO27](https://github.com/MAMADO27)
+- LinkedIn: [mohammad-abd-elrahman](https://linkedin.com/in/mohammad-abd-elrahman)
 
 
 ---
