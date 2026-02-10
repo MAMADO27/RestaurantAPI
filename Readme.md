@@ -205,9 +205,9 @@ This project is licensed under the MIT License .
 ## Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
-- Email: your.email@example.com
+- GitHub: [@yourusername](https://github.com/MAMADO27)
+- LinkedIn: [Your Profile](https://linkedin.com/in/mohammad-abd-elrahman)
+
 
 ---
 
